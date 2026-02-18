@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapGuess</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        #start-screen.hidden {
+            display: none;
+        }
+
+        .start-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .start-container h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+            text-align: center;
+            font-size: 36px;
+        }
+
+        .start-container .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .settings-group {
+            margin-bottom: 25px;
+        }
+
+        .settings-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .settings-group input,
+        .settings-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .settings-group input:focus,
+        .settings-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .settings-hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        #start-game-btn {
+            width: 100%;
+            padding: 15px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #start-game-btn:hover {
+            background: #218838;
+        }
+
+        #start-game-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3001;
+            flex-direction: column;
+        }
+
+        #loading-screen.active {
+            display: flex;
+        }
+
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+
+        .loading-content h2 {
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-progress {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+
+        #game-container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        #game-container.hidden {
+            display: none;
+        }
+
+        #end-game-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        #end-game-screen.active {
+            display: flex;
+        }
+
+        .end-game-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .end-game-container h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+            text-align: center;
+            font-size: 42px;
+        }
+
+        .end-game-message {
+            text-align: center;
+            font-size: 24px;
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .end-game-stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .stat-label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .stat-value {
+            color: #333;
+            font-weight: bold;
+        }
+
+        .stat-value.score {
+            color: #28a745;
+            font-size: 24px;
+        }
+
+        #end-game-map {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 3px solid #667eea;
+        }
+
+        .round-summary {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .round-summary h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .round-detail {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .round-detail span:first-child {
+            color: #666;
+        }
+
+        .round-detail span:last-child {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .end-game-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .end-game-buttons button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #play-again-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        #play-again-btn:hover {
+            background: #218838;
+        }
+
+        .map-legend {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #ddd;
+        }
+
+        .map-legend h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .legend-marker {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .legend-marker.guess {
+            background: #4285F4;
+        }
+
+        .legend-marker.actual {
+            background: #EA4335;
+        }
+
+        .legend-line {
+            width: 30px;
+            height: 3px;
+            background: #FF0000;
+            margin-right: 10px;
+        }
+
+        #streetview-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #panorama {
+            width: 100%;
+            height: 100%;
+        }
+
+        #map-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 400px;
+            height: 300px;
+            background: white;
+            border: 3px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 5px;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        #timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        #timer.warning {
+            color: #ff6b6b;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        #guess-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        #guess-btn:hover {
+            background: #218838;
+        }
+
+        #guess-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #next-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            display: none;
+        }
+
+        #next-btn:hover {
+            background: #0056b3;
+        }
+
+        #skip-btn {
+            background: #ffc107;
+            color: #333;
+            border: none;
+            padding: 8px 15px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        #skip-btn:hover {
+            background: #ffb300;
+        }
+
+        .button-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #score-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #result-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 2000;
+            text-align: center;
+            min-width: 400px;
+        }
+
+        #result-modal h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        #result-modal p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .score-large {
+            font-size: 48px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 20px 0;
+        }
+
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1999;
+        }
+
+        .round-info {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        #total-score {
+            color: #007bff;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <div class="start-container">
+            <h1>🌍 MapGuess</h1>
+            <p class="subtitle">Guess locations around the world!</p>
+            
+            <div class="settings-group">
+                <label for="timer-setting">Timer Duration</label>
+                <select id="timer-setting">
+                    <option value="60">1 minute</option>
+                    <option value="120" selected>2 minutes</option>
+                    <option value="180">3 minutes</option>
+                    <option value="300">5 minutes</option>
+                    <option value="0">No timer (unlimited)</option>
+                </select>
+                <div class="settings-hint">How long you have to make each guess</div>
+            </div>
+
+            <div class="settings-group">
+                <label for="rounds-setting">Number of Rounds</label>
+                <input type="number" id="rounds-setting" min="1" max="20" value="5">
+                <div class="settings-hint">How many locations to guess (1-20)</div>
+            </div>
+
+            <button id="start-game-btn">Start Game</button>
+        </div>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-content">
+            <h2>Finding Locations...</h2>
+            <div class="loading-spinner"></div>
+            <div class="loading-progress">
+                <span id="loading-status">Searching for valid locations...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- End Game Screen -->
+    <div id="end-game-screen">
+        <div class="end-game-container">
+            <h1>🎯 Game Complete!</h1>
+            <div class="end-game-message" id="end-game-message">
+                <!-- Message will be inserted here -->
+            </div>
+
+            <div class="end-game-stats">
+                <div class="stat-row">
+                    <span class="stat-label">Total Score:</span>
+                    <span class="stat-value score" id="final-total-score">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Maximum Possible:</span>
+                    <span class="stat-value" id="final-max-score">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Average per Round:</span>
+                    <span class="stat-value" id="final-average-score">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Accuracy:</span>
+                    <span class="stat-value" id="final-percentage">0%</span>
+                </div>
+            </div>
+
+            <div class="map-legend">
+                <h3>Map Legend</h3>
+                <div class="legend-item">
+                    <div class="legend-marker guess"></div>
+                    <span>Your Guesses</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-marker actual"></div>
+                    <span>Actual Locations</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-line"></div>
+                    <span>Distance (red line)</span>
+                </div>
+            </div>
+
+            <div id="end-game-map"></div>
+
+            <div id="round-summaries">
+                <!-- Round summaries will be inserted here -->
+            </div>
+
+            <div class="end-game-buttons">
+                <button id="play-again-btn">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <div id="streetview-container">
+            <div id="panorama"></div>
+        </div>
+
+        <div id="controls">
+            <div id="timer">2:00</div>
+            <div class="button-container">
+                <button id="guess-btn" disabled>Make Guess</button>
+                <button id="next-btn">Next Round</button>
+            </div>
+            <div class="round-info">
+                Round <span id="round-num">1</span>/<span id="max-rounds">5</span>
+                <button id="skip-btn">Skip Location</button>
+            </div>
+        </div>
+
+        <div id="score-display">
+            Round Score: <span id="round-score">0</span><br>
+            <span id="total-score">Total: 0</span>
+        </div>
+
+        <div id="map-panel">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <div id="overlay"></div>
+    <div id="result-modal">
+        <h2>Round Result</h2>
+        <div class="score-large" id="modal-score">0</div>
+        <p><strong>Distance:</strong> <span id="modal-distance">0</span> km</p>
+        <p><strong>Actual Location:</strong> <span id="modal-location">Unknown</span></p>
+    </div>
+
+    <script>
+        let map;
+        let panorama;
+        let guessMarker;
+        let actualMarker;
+        let currentLocation;
+        let guessLocation = null;
+        let round = 1;
+        let totalScore = 0;
+        let MAX_ROUNDS = 5;
+        
+        // Timer variables
+        let timerDuration = 120; // Default 2 minutes in seconds
+        let timeRemaining = 120;
+        let timerInterval = null;
+        let roundActive = false;
+        
+        // Location management
+        let gameLocations = [];
+        let currentLocationIndex = 0;
+        let streetViewService;
+        
+        // Game history for end screen
+        let gameHistory = [];
+
+        // Generate random coordinates with bias toward populated areas
+        function generateRandomLocation() {
+            // Use weighted random to bias toward areas more likely to have Street View
+            // Focus on latitudes where most human population lives (-50 to 60)
+            
+            // 70% chance of populated latitudes, 30% chance of anywhere
+            let lat, lng;
+            
+            if (Math.random() < 0.7) {
+                // Bias toward populated latitudes (-50 to 60)
+                lat = (Math.random() * 110) - 50;
+            } else {
+                // Occasionally try extreme latitudes
+                lat = (Math.random() * 130) - 60;
+            }
+            
+            // All longitudes are equally valid
+            lng = (Math.random() * 360) - 180;
+            
+            return { lat, lng };
+        }
+
+        // Check if a location has Street View coverage
+        function checkStreetViewCoverage(location) {
+            return new Promise((resolve, reject) => {
+                const position = new google.maps.LatLng(location.lat, location.lng);
+                
+                streetViewService.getPanorama({
+                    location: position,
+                    radius: 50000, // 50km radius to find nearest Street View
+                    source: google.maps.StreetViewSource.OUTDOOR
+                }, (data, status) => {
+                    if (status === google.maps.StreetViewStatus.OK) {
+                        // Return the actual Street View location (might be slightly different)
+                        resolve({
+                            lat: data.location.latLng.lat(),
+                            lng: data.location.latLng.lng(),
+                            name: data.location.description || 'Unknown Location'
+                        });
+                    } else {
+                        reject('No Street View coverage: ' + status);
+                    }
+                });
+            });
+        }
+
+        // Generate valid locations for the game
+        async function generateGameLocations(numLocations) {
+            const locations = [];
+            let attempts = 0;
+            const maxAttempts = numLocations * 50; // Try up to 50x the needed amount
+            
+            console.log(`Starting to generate ${numLocations} locations...`);
+            document.getElementById('loading-status').textContent = 
+                `Finding locations... (0/${numLocations}) - Searching...`;
+            
+            while (locations.length < numLocations && attempts < maxAttempts) {
+                attempts++;
+                
+                // Update status every 5 attempts
+                if (attempts % 5 === 0) {
+                    document.getElementById('loading-status').textContent = 
+                        `Finding locations... (${locations.length}/${numLocations}) - ${attempts} attempts`;
+                }
+                
+                try {
+                    const randomLoc = generateRandomLocation();
+                    console.log(`Attempt ${attempts}: Trying location (${randomLoc.lat.toFixed(2)}, ${randomLoc.lng.toFixed(2)})`);
+                    
+                    const validLoc = await checkStreetViewCoverage(randomLoc);
+                    console.log(`✓ Found valid location: ${validLoc.name}`);
+                    
+                    // Check if this location is too close to existing ones
+                    const tooClose = locations.some(loc => {
+                        const distance = calculateDistanceSimple(
+                            loc.lat, loc.lng,
+                            validLoc.lat, validLoc.lng
+                        );
+                        return distance < 100; // At least 100km apart
+                    });
+                    
+                    if (!tooClose) {
+                        locations.push(validLoc);
+                        console.log(`✓ Added location ${locations.length}/${numLocations}`);
+                        document.getElementById('loading-status').textContent = 
+                            `Finding locations... (${locations.length}/${numLocations}) - ${attempts} attempts`;
+                    } else {
+                        console.log(`✗ Location too close to existing location, skipping`);
+                    }
+                } catch (error) {
+                    // Location doesn't have Street View, try again
+                    console.log(`✗ ${error}`);
+                    continue;
+                }
+                
+                // Add small delay every 10 attempts to avoid hammering the API
+                if (attempts % 10 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            }
+            
+            console.log(`Finished: Found ${locations.length} locations in ${attempts} attempts`);
+            
+            if (locations.length < numLocations) {
+                throw new Error(`Could only find ${locations.length} out of ${numLocations} valid locations after ${attempts} attempts`);
+            }
+            
+            return locations;
+        }
+
+        // Simple distance calculation for filtering
+        function calculateDistanceSimple(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                     Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        // Calculate score based on distance
+        function calculateScore(distance) {
+            // Score decreases exponentially with distance
+            // Perfect score if within 1km, 0 if over 2000km
+            if (distance < 1) {
+                return 5000;
+            } else if (distance > 2000) {
+                return 0;
+            } else {
+                // Exponential decay
+                return Math.floor(5000 * Math.exp(-distance / 500));
+            }
+        }
+
+        // Start the game with settings
+        async function startGameWithSettings() {
+            // Get settings
+            timerDuration = parseInt(document.getElementById('timer-setting').value);
+            MAX_ROUNDS = parseInt(document.getElementById('rounds-setting').value);
+            
+            // Validate rounds
+            if (MAX_ROUNDS < 1 || MAX_ROUNDS > 20) {
+                alert('Please choose between 1 and 20 rounds');
+                return;
+            }
+            
+            // Check if Street View service is initialized
+            if (!streetViewService) {
+                alert('Error: Google Maps not fully loaded. Please refresh the page and try again.');
+                return;
+            }
+            
+            // Reset game state
+            round = 1;
+            totalScore = 0;
+            currentLocationIndex = 0;
+            gameHistory = [];
+            document.getElementById('total-score').textContent = 'Total: 0';
+            document.getElementById('round-num').textContent = '1';
+            document.getElementById('round-score').textContent = '0';
+            
+            // Update max rounds display
+            document.getElementById('max-rounds').textContent = MAX_ROUNDS;
+            
+            // Hide start screen, show loading
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('loading-screen').classList.add('active');
+            
+            console.log(`Starting game with ${MAX_ROUNDS} rounds and ${timerDuration}s timer`);
+            
+            try {
+                // Generate locations
+                gameLocations = await generateGameLocations(MAX_ROUNDS);
+                currentLocationIndex = 0;
+                
+                console.log('All locations generated successfully:', gameLocations);
+                
+                // Hide loading, show game
+                document.getElementById('loading-screen').classList.remove('active');
+                document.getElementById('game-container').classList.remove('hidden');
+                
+                // Start first round
+                loadNextGameLocation();
+            } catch (error) {
+                console.error('Error generating locations:', error);
+                alert('Error generating locations: ' + error.message + '\n\nPlease try again. If the problem persists, try:\n1. Reducing the number of rounds\n2. Refreshing the page\n3. Checking browser console (F12) for details');
+                
+                // Return to start screen
+                document.getElementById('loading-screen').classList.remove('active');
+                document.getElementById('start-screen').classList.remove('hidden');
+            }
+        }
+
+        function playAgain() {
+            // Hide end game screen
+            document.getElementById('end-game-screen').classList.remove('active');
+            
+            // Show start screen
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        // Initialize the map and street view
+        function initMap() {
+            console.log('Initializing Google Maps...');
+            
+            // Initialize map
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 0, lng: 0 },
+                zoom: 1,
+                disableDefaultUI: true,
+                zoomControl: true,
+            });
+
+            // Add click listener for guessing
+            map.addListener('click', function(e) {
+                placeGuessMarker(e.latLng);
+            });
+
+            // Initialize street view
+            panorama = new google.maps.StreetViewPanorama(
+                document.getElementById('panorama'),
+                {
+                    disableDefaultUI: true,
+                    linksControl: false,
+                    panControl: true,
+                    enableCloseButton: false,
+                    zoomControl: true,
+                    fullscreenControl: true,
+                }
+            );
+            
+            // Initialize Street View Service for checking coverage
+            streetViewService = new google.maps.StreetViewService();
+            console.log('Street View Service initialized:', !!streetViewService);
+            
+            // Set up start button listener
+            document.getElementById('start-game-btn').addEventListener('click', startGameWithSettings);
+            
+            console.log('MapGuess initialized and ready!');
+            console.log('Click "Start Game" to begin.');
+        }
+        
+        // Add error handler for Google Maps loading
+        window.gm_authFailure = function() {
+            alert('Google Maps authentication failed!\n\nPlease check:\n1. Your API key is set in templates/index.html\n2. The API key is valid\n3. Maps JavaScript API and Street View Static API are enabled\n\nSee README.md for setup instructions.');
+        };
+
+        function placeGuessMarker(location) {
+            // Remove old marker if exists
+            if (guessMarker) {
+                guessMarker.setMap(null);
+            }
+
+            // Place new marker
+            guessMarker = new google.maps.Marker({
+                position: location,
+                map: map,
+                title: 'Your Guess',
+                icon: {
+                    url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+                }
+            });
+
+            guessLocation = location;
+            document.getElementById('guess-btn').disabled = false;
+        }
+
+        function startTimer() {
+            // If timer is set to 0 (unlimited), don't start countdown
+            if (timerDuration === 0) {
+                document.getElementById('timer').textContent = '∞';
+                document.getElementById('timer').classList.remove('warning');
+                roundActive = true;
+                return;
+            }
+            
+            timeRemaining = timerDuration; // Reset to configured duration
+            roundActive = true;
+            updateTimerDisplay();
+            
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeUp();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            roundActive = false;
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = display;
+            
+            // Add warning style when under 30 seconds
+            if (timeRemaining <= 30) {
+                timerElement.classList.add('warning');
+            } else {
+                timerElement.classList.remove('warning');
+            }
+        }
+
+        async function handleTimeUp() {
+            roundActive = false;
+            
+            // If user clicked on map, score their guess
+            if (guessLocation) {
+                await makeGuess();
+            } else {
+                // No guess made - give 0 points and store in history
+                document.getElementById('round-score').textContent = 0;
+                
+                // Store round data with no guess
+                gameHistory.push({
+                    round: round,
+                    guessLat: null,
+                    guessLng: null,
+                    actualLat: currentLocation.lat,
+                    actualLng: currentLocation.lng,
+                    actualName: currentLocation.name || 'Unknown Location',
+                    distance: null,
+                    score: 0
+                });
+                
+                // Show actual location
+                actualMarker = new google.maps.Marker({
+                    position: {
+                        lat: currentLocation.lat,
+                        lng: currentLocation.lng
+                    },
+                    map: map,
+                    title: 'Actual Location',
+                    icon: {
+                        url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+                    }
+                });
+                
+                // Center map on actual location
+                map.setCenter(actualMarker.getPosition());
+                map.setZoom(12);
+                
+                // Show result modal with 0 score
+                document.getElementById('modal-score').textContent = 0;
+                document.getElementById('modal-distance').textContent = 'No guess made';
+                document.getElementById('modal-location').textContent = currentLocation.name || 'Unknown Location';
+                document.getElementById('overlay').style.display = 'block';
+                document.getElementById('result-modal').style.display = 'block';
+                
+                // Update controls
+                document.getElementById('guess-btn').style.display = 'none';
+                document.getElementById('next-btn').style.display = 'inline-block';
+                document.getElementById('skip-btn').style.display = 'none';
+            }
+        }
+
+        function loadNextGameLocation() {
+            if (currentLocationIndex >= gameLocations.length) {
+                console.error('No more locations available');
+                return;
+            }
+            
+            currentLocation = gameLocations[currentLocationIndex];
+            
+            // Set street view position
+            panorama.setPosition({
+                lat: currentLocation.lat,
+                lng: currentLocation.lng
+            });
+
+            // Reset map and markers
+            map.setCenter({ lat: 0, lng: 0 });
+            map.setZoom(1);
+            if (guessMarker) guessMarker.setMap(null);
+            if (actualMarker) actualMarker.setMap(null);
+            guessLocation = null;
+            document.getElementById('guess-btn').disabled = true;
+            
+            // Start the timer
+            startTimer();
+            
+            // Show guess and skip buttons
+            document.getElementById('guess-btn').style.display = 'inline-block';
+            document.getElementById('skip-btn').style.display = 'inline-block';
+        }
+
+        // For skip functionality - generate a new random location
+        async function skipToNewLocation() {
+            // Stop current timer
+            stopTimer();
+            
+            // Show loading state
+            document.getElementById('skip-btn').disabled = true;
+            document.getElementById('skip-btn').textContent = 'Loading...';
+            
+            try {
+                // Generate one new location
+                const newLocations = await generateGameLocations(1);
+                
+                // Replace current location in the array
+                gameLocations[currentLocationIndex] = newLocations[0];
+                
+                // Load the new location
+                loadNextGameLocation();
+            } catch (error) {
+                alert('Could not find a new location. Please try again.');
+                // Reload current location
+                loadNextGameLocation();
+            } finally {
+                document.getElementById('skip-btn').disabled = false;
+                document.getElementById('skip-btn').textContent = 'Skip Location';
+            }
+        }
+
+        async function makeGuess() {
+            if (!guessLocation) return;
+            
+            // Stop the timer
+            stopTimer();
+
+            // Calculate distance between guess and actual location
+            const distance = calculateDistanceSimple(
+                currentLocation.lat, currentLocation.lng,
+                guessLocation.lat(), guessLocation.lng()
+            );
+            
+            // Calculate score
+            const score = calculateScore(distance);
+            
+            // Store round data in history
+            gameHistory.push({
+                round: round,
+                guessLat: guessLocation.lat(),
+                guessLng: guessLocation.lng(),
+                actualLat: currentLocation.lat,
+                actualLng: currentLocation.lng,
+                actualName: currentLocation.name || 'Unknown Location',
+                distance: Math.round(distance),
+                score: score
+            });
+            
+            // Update scores
+            document.getElementById('round-score').textContent = score;
+            totalScore += score;
+            document.getElementById('total-score').textContent = `Total: ${totalScore}`;
+
+            // Show actual location marker
+            actualMarker = new google.maps.Marker({
+                position: {
+                    lat: currentLocation.lat,
+                    lng: currentLocation.lng
+                },
+                map: map,
+                title: 'Actual Location',
+                icon: {
+                    url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+                }
+            });
+
+            // Draw line between guess and actual
+            const line = new google.maps.Polyline({
+                path: [guessLocation, actualMarker.getPosition()],
+                geodesic: true,
+                strokeColor: '#FF0000',
+                strokeOpacity: 1.0,
+                strokeWeight: 2,
+                map: map
+            });
+
+            // Fit map to show both markers
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(guessLocation);
+            bounds.extend(actualMarker.getPosition());
+            map.fitBounds(bounds);
+
+            // Show result modal
+            document.getElementById('modal-score').textContent = score;
+            document.getElementById('modal-distance').textContent = Math.round(distance);
+            document.getElementById('modal-location').textContent = currentLocation.name || 'Unknown Location';
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('result-modal').style.display = 'block';
+
+            // Update controls
+            document.getElementById('guess-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'inline-block';
+            document.getElementById('skip-btn').style.display = 'none';
+        }
+
+        function nextRound() {
+            // Hide modal
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('result-modal').style.display = 'none';
+
+            round++;
+            currentLocationIndex++;
+            
+            if (round > MAX_ROUNDS) {
+                // Game over - show end game screen
+                showEndGameScreen();
+                return;
+            }
+
+            document.getElementById('round-num').textContent = round;
+            document.getElementById('round-score').textContent = '0';
+            document.getElementById('guess-btn').style.display = 'inline-block';
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('skip-btn').style.display = 'inline-block';
+
+            loadNextGameLocation();
+        }
+
+        function showEndGameScreen() {
+            // Hide game container
+            document.getElementById('game-container').classList.add('hidden');
+            
+            // Calculate stats
+            const maxScore = MAX_ROUNDS * 5000;
+            const average = Math.round(totalScore / MAX_ROUNDS);
+            const percentage = Math.round((totalScore / maxScore) * 100);
+            
+            // Determine message based on average
+            let message;
+            if (average < 1000) {
+                message = "Ah, you could have done better...";
+            } else if (average < 3000) {
+                message = "Well, you did fine";
+            } else if (average < 4000) {
+                message = "You did great!";
+            } else {
+                message = "Wow, you know your shit!";
+            }
+            
+            // Update stats display
+            document.getElementById('end-game-message').textContent = message;
+            document.getElementById('final-total-score').textContent = totalScore.toLocaleString();
+            document.getElementById('final-max-score').textContent = maxScore.toLocaleString();
+            document.getElementById('final-average-score').textContent = average.toLocaleString();
+            document.getElementById('final-percentage').textContent = percentage + '%';
+            
+            // Create round summaries
+            const summariesContainer = document.getElementById('round-summaries');
+            summariesContainer.innerHTML = '';
+            
+            gameHistory.forEach((roundData, index) => {
+                const summaryDiv = document.createElement('div');
+                summaryDiv.className = 'round-summary';
+                
+                summaryDiv.innerHTML = `
+                    <h3>Round ${roundData.round}</h3>
+                    <div class="round-detail">
+                        <span>Location:</span>
+                        <span>${roundData.actualName}</span>
+                    </div>
+                    <div class="round-detail">
+                        <span>Distance:</span>
+                        <span>${roundData.distance !== null ? roundData.distance.toLocaleString() + ' km' : 'No guess'}</span>
+                    </div>
+                    <div class="round-detail">
+                        <span>Score:</span>
+                        <span>${roundData.score.toLocaleString()} points</span>
+                    </div>
+                `;
+                
+                summariesContainer.appendChild(summaryDiv);
+            });
+            
+            // Show end game screen
+            document.getElementById('end-game-screen').classList.add('active');
+            
+            // Initialize end game map after a short delay to ensure container is visible
+            setTimeout(() => {
+                initEndGameMap();
+            }, 100);
+        }
+
+        function initEndGameMap() {
+            const endGameMap = new google.maps.Map(document.getElementById('end-game-map'), {
+                center: { lat: 0, lng: 0 },
+                zoom: 2,
+                mapTypeId: 'terrain'
+            });
+            
+            const bounds = new google.maps.LatLngBounds();
+            
+            // Add markers and lines for each round
+            gameHistory.forEach((roundData, index) => {
+                // Add actual location marker (red)
+                const actualMarker = new google.maps.Marker({
+                    position: { lat: roundData.actualLat, lng: roundData.actualLng },
+                    map: endGameMap,
+                    title: `Round ${roundData.round}: ${roundData.actualName}`,
+                    label: {
+                        text: String(roundData.round),
+                        color: 'white',
+                        fontWeight: 'bold'
+                    },
+                    icon: {
+                        url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+                    }
+                });
+                
+                bounds.extend(actualMarker.getPosition());
+                
+                // Add guess marker and line if guess was made
+                if (roundData.guessLat !== null && roundData.guessLng !== null) {
+                    const guessMarker = new google.maps.Marker({
+                        position: { lat: roundData.guessLat, lng: roundData.guessLng },
+                        map: endGameMap,
+                        title: `Round ${roundData.round}: Your guess`,
+                        label: {
+                            text: String(roundData.round),
+                            color: 'white',
+                            fontWeight: 'bold'
+                        },
+                        icon: {
+                            url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+                        }
+                    });
+                    
+                    bounds.extend(guessMarker.getPosition());
+                    
+                    // Draw line between guess and actual
+                    const line = new google.maps.Polyline({
+                        path: [guessMarker.getPosition(), actualMarker.getPosition()],
+                        geodesic: true,
+                        strokeColor: '#FF0000',
+                        strokeOpacity: 0.6,
+                        strokeWeight: 2,
+                        map: endGameMap
+                    });
+                }
+            });
+            
+            // Fit map to show all markers
+            endGameMap.fitBounds(bounds);
+        }
+
+        function skipLocation() {
+            skipToNewLocation();
+        }
+
+        // Event listeners
+        document.getElementById('guess-btn').addEventListener('click', makeGuess);
+        document.getElementById('next-btn').addEventListener('click', nextRound);
+        document.getElementById('skip-btn').addEventListener('click', skipLocation);
+        document.getElementById('play-again-btn').addEventListener('click', playAgain);
+
+        // Close modal when clicking overlay
+        document.getElementById('overlay').addEventListener('click', function() {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('result-modal').style.display = 'none';
+        });
+    </script>
+
+    <!-- Load Google Maps API - REPLACE 'YOUR_API_KEY' with your actual API key -->
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap">
+    </script>
+</body>
+</html>
